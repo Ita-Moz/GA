@@ -1,0 +1,2 @@
+PASSWORD_DB = 'admin'
+DATABASE_NAME= 'GA'
