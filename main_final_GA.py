@@ -1,11 +1,13 @@
 import random
+import sys
 import time
+
 import numpy as np
 from prettytable import PrettyTable
-import sys
 
 sys.path.append('./db')
 from mysql_helper import connect_to_mysql
+
 
 # Hàm Global
 # Hàm xuất ra number phần tử ngẫu nhiên của list có thể trùng nhau
@@ -121,7 +123,7 @@ class Course:
         return self._subject
 
     def __str__(self):
-        return "Course: " + self._id + " | " + self._name + " | " + str(self._maxNumberOfStudents) 
+        return "Course: " + str(self._id) + " | " + self._name + " | " + str(self._instructors) 
 
 # Học phần(Môn học)
 class Subject:
@@ -176,7 +178,8 @@ class Schedule:
     
     # Create individual
     def create_schedule(self):
-        for i in range(0,len(self._data.get_courses())):
+
+        for i in range(0,len(self._data.get_courses())-1):
             newClasses = Classes(self._idCLasses,self._data.get_courses()[i],self._data.get_courses()[i].get_instructors())
             self._idCLasses += 1
             newClasses.set_room(random.choice(self._data.get_rooms()))
@@ -206,7 +209,7 @@ class Schedule:
                         self._numberOfConflicts += 1
         # Đảm bảo cho giá trị fitness luôn nằm trong khoảng từ 0-1
         return 1/((1.0*self._numberOfConflicts + 1))
-
+    
     def get_fitness(self):
         if(self._isFitnessChanged == True):
             self._fitness = '{:.3f}'.format(self.calculate_fitness())
@@ -250,6 +253,7 @@ class Data:
         join instructors_subjects on courses.instructor_subject_id = instructors_subjects.id
         join instructors on instructors_subjects.instructor_id = instructors.id
         join subjects on instructors_subjects.subject_id = subjects.id
+        
         """)
         courses = self.cursor.fetchall()
         array = []
@@ -453,20 +457,25 @@ class GA:
         while i < len(population.get_schedules()):
             schedule1 = self.selection_tournament(population)
             schedule2 = self.selection_tournament(population)
-            crossover_pop.get_schedules().append(self.crossover(schedule1,schedule2))
+            if(random.random() < 0.5):
+                crossover_pop.get_schedules().append(self.crossover(schedule1,schedule2))
+            else:
+                crossover_pop.get_schedules().append(schedule1)
             i += 1
         return crossover_pop
 
     def mutation(self, mutation_schedule,mutation_rate):
         schedule = Schedule(data).create_schedule()
-        for i in range (0,len(mutation_schedule.get_classes())):
-            if(mutation_rate > random.randint(0,100)):
-                mutation_schedule.get_classes()[i] = schedule.get_classes()[i]
+        # for i in range (0,len(mutation_schedule.get_classes())):
+        #     if(mutation_rate < random.randint(0,100)):
+        random_index = random.randrange(0,len(mutation_schedule.get_classes()))
+        mutation_schedule.get_classes()[random_index] = schedule.get_classes()[random_index]
         return mutation_schedule
 
     def mutation_population (self,population, mutation_rate,num_elite_schedule):
         for i in range (num_elite_schedule, len(population.get_schedules())):
-            population.get_schedules()[i] = self.mutation(population.get_schedules()[i],mutation_rate)
+            if(mutation_rate > random.randint(0,100)):
+                population.get_schedules()[i] = self.mutation(population.get_schedules()[i],mutation_rate)
         return population
     
     # population là gồm nhiều schedule 
@@ -476,6 +485,7 @@ class GA:
         # Tiến hành đột biến
         mutation_pop = self.mutation_population(crossover_pop,mutation_rate,num_elite_schedule)
         return mutation_pop
+    
 data = Data()
 def main():
     display = Display(data)
@@ -505,12 +515,11 @@ def main():
         best_fitness = population.get_schedules()[0].get_fitness()
         print('Số lượng schedule trong quần thể: ', len(population.get_schedules()))
         print('Best schedule fitness: ', best_fitness)
-
     end_time = time.time()
     print("Thời gian chạy thuật toán: ", end_time - start_time, " giây")
     print('Best schedule fitness: ', best_fitness)
-    display.print_schedule(population.get_schedules()[0])
-    display.print_generation(population.get_schedules())
+    # display.print_schedule(population.get_schedules()[0])
+    # display.print_generation(population.get_schedules())
 
 if __name__ == "__main__":
     main()
